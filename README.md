@@ -1,25 +1,12 @@
-# PostHog Plugin Starter Kit
+# Planhat PostHog Plugin
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-red.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-This is a PostHog plugin template.
+This plugin forwards user tracking events to Planhat.
 
-The existing sample code adds property `"greeting"` to every event with a configurable value (default: `"Hello world!"`).  
-But that is just to help you get started! To make it your own:
-- [ ] Add your code to `index.js`.
-- [ ] Add your metadata and configuration schema to `plugin.json`.
-- [ ] Search for `<TODO:`, make sure none are left!
-- [ ] Optional: Add a `logo.png` file to give this plugin its own logo.
+## Planhat API Documentation
 
-If you're looking for inspiration, here are a few exemplary plugins:
-
-1. [Hello World](https://github.com/PostHog/helloworldplugin) – basic event processing, with tests
-1. [S3 Export](https://github.com/PostHog/s3-export-plugin) – event export using the AWS SDK, with TypeScript
-1. [GeoIP](https://github.com/PostHog/posthog-plugin-geoip) – advanced event processing using the GeoIP feature, with tests, formatting, linting, TypeScript, and GitHub Actions CI
-1. [PagerDuty](https://github.com/PostHog/posthog-pagerduty-plugin) – periodic job using external HTTP API access
-
-To get up to speed with the environment of plugins, check out [our Plugins overview in PostHog Docs](https://posthog.com/docs/plugins/build/overview).  
-For a crash course, read [the Plugins tutorial in PostHog Docs](https://posthog.com/docs/plugins/build/tutorial).
+- [Planhat Docs - User Tracking](https://docs.planhat.com/#eb5586b2-49d4-4385-9944-da9f71380a66)
 
 ## Installation
 
@@ -27,6 +14,16 @@ For a crash course, read [the Plugins tutorial in PostHog Docs](https://posthog.
 1. Go to the Plugins page from the sidebar.
 1. Head to the Advanced tab.
 1. "Install from GitHub, GitLab or npm" using this repository's URL.
+
+## Roadmap
+
+- [x] Whitelist events
+- [x] Blacklist events
+- [x] Whitelist users
+- [x] Blacklist users
+- [ ] Support whitelisting by cohorts
+- [ ] Custom mapping of Posthog event names to Planhat action names
+- [ ] Option to send via bulk API rather than single API call
 
 ## Questions?
 

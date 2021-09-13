@@ -1,18 +1,63 @@
 {
-    "name": "<TODO: your plugin name>",
-    "url": "<TODO: Your Plugin URL here>",
-    "description": "<TODO: Your Plugin description here>",
+    "name": "Planhat",
+    "url": "https://github.com/intrepica/planhat-posthog-plugin",
+    "description": "Send user activity data to Planhat",
     "main": "index.js",
     "posthogVersion": ">= 1.25.0",
     "config": [
         {
-            "markdown": "<TODO: your plugin config, remove if none>"
+            "key": "planhatTenantToken",
+            "name": "Tenant Token",
+            "hint": "You can get it from the Developer section in Planhat",
+            "type": "string",
+            "default": "",
+            "required": true
         },
         {
-            "key": "greeting",
-            "name": "What greeting would you like to use?",
+            "markdown": "## Event Settings"
+        },
+        {
+            "key": "eventWhitelist",
+            "name": "Event Whitelist",
+            "hint": "A comma separated list of events that will be sent to Planhat",
             "type": "string",
-            "default": "Hello World!",
+            "default": "$pageview,$identify,$create_alias",
+            "required": false
+        },
+        {
+            "key": "eventBlacklist",
+            "name": "Event Blacklist",
+            "hint": "A comma separated list of events that will never be sent to Planhat",
+            "type": "string",
+            "default": "$autocapture",
+            "required": false
+        },
+        {
+            "markdown": "## User Settings\n\n### Whitelist and Blacklist format\n\nThe format should be a CSV file with 1 column (so just a list separated with new lines).\nHeader is not required but if it is present it must be called `externalId`"
+        },
+        {
+            "key": "userWhitelist",
+            "name": "User Whitelist",
+            "hint": "A list of identified users that will be sent to Planhat",
+            "type": "attachment",
+            "required": false
+        },
+        {
+            "key": "userBlacklist",
+            "name": "User Blacklist",
+            "hint": "A list of identified users that will never be sent to Planhat",
+            "type": "attachment",
+            "required": false
+        },
+        {
+            "markdown": "## Developer Settings"
+        },
+        {
+            "key": "enableDebugLogs",
+            "name": "Enable Debug Logs",
+            "type": "choice",
+            "choices": ["yes", "no"],
+            "default": "no",
             "required": false
         }
     ]

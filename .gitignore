@@ -17,3 +17,6 @@ yalc*
 
 # macOS
 .DS_Store
+
+# Random files
+files/
