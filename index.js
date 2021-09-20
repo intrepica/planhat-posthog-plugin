@@ -56,76 +56,71 @@ export async function setupPlugin({ config, attachments, global }) {
   // TODO: Support whitelisting by Cohort
 }
 
-// TODO: Use exportEvents and API Bulk
-export async function exportEvents(events, { cache, config }) {
+export async function exportEvents(events, { config, global }) {
   if (config.enableDebugLogs === "yes") {
-    const sent = await cache.get("planhat:sent", 0);
-    const skipped = await cache.get("planhat:skipped", 0);
-    console.debug(`Stats | sent=${sent}, skipped=${skipped} | events=${events.length}`);
+    console.debug(`Stats | events=${events.length}`);
   }
-}
 
-export async function onSnapshot(snapshot) {
-  console.warn("Snapshot", snapshot);
-}
+  const userActivities = [];
+  for (const event of events) {
+    const user_id = event.properties?.$user_id ?? event.distinct_id;
+    if (user_id) {
+      const isEventWhitelisted =
+        !Array.isArray(global.eventWhitelist) ||
+        global.eventWhitelist.includes(event.event);
+      const isEventBlacklisted =
+        Array.isArray(global.eventBlacklist) &&
+        global.eventBlacklist.includes(event.event);
+      const isUserWhitelisted =
+        !Array.isArray(global.userWhitelist) ||
+        global.userWhitelist.includes(user_id);
+      const isUserBlacklisted =
+        Array.isArray(global.userBlacklist) &&
+        global.userBlacklist.includes(user_id);
 
-export async function onEvent(event, { cache, config, global }) {
-  const user_id = event.properties?.$user_id ?? event.distinct_id;
-  if (user_id) {
-    const isEventWhitelisted =
-      !Array.isArray(global.eventWhitelist) ||
-      global.eventWhitelist.includes(event.event);
-    const isEventBlacklisted =
-      Array.isArray(global.eventBlacklist) &&
-      global.eventBlacklist.includes(event.event);
-    const isUserWhitelisted =
-      !Array.isArray(global.userWhitelist) ||
-      global.userWhitelist.includes(user_id);
-    const isUserBlacklisted =
-      Array.isArray(global.userBlacklist) &&
-      global.userBlacklist.includes(user_id);
-
-    if (config.enableDebugLogs === "yes") {
-      console.debug(
-        `DEBUG: Event for ${event.event} is ${JSON.stringify({
-          isEventWhitelisted,
-          isEventBlacklisted,
-          isUserWhitelisted,
-          isUserBlacklisted,
-        })}`,
-        event
-      );
-    }
-
-    if (
-      !isEventBlacklisted &&
-      isEventWhitelisted &&
-      !isUserBlacklisted &&
-      isUserWhitelisted
-    ) {
-      try {
-        const res = await fetch(
-          `https://analytics.planhat.com/analytics/${config.planhatTenantToken}`,
-          {
-            method: "POST",
-            body: JSON.stringify(toPlanhat(event)),
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
+      if (config.enableDebugLogs === "yes") {
+        console.debug(
+          `DEBUG: Event for ${event.event} is ${JSON.stringify({
+            isEventWhitelisted,
+            isEventBlacklisted,
+            isUserWhitelisted,
+            isUserBlacklisted,
+          })}`,
+          event
         );
-        if (!res.ok) {
-          const text = await res.text();
-          console.error(`Error: ${res.status} ${res.statusText} ${text}`);
-        }
-        await cache.incr("planhat:sent");
-        return;
-      } catch (e) {
-        console.error("Error sending event to Planhat:", e);
+      }
+
+      if (
+        !isEventBlacklisted &&
+        isEventWhitelisted &&
+        !isUserBlacklisted &&
+        isUserWhitelisted
+      ) {
+        userActivities.push(event);
       }
     }
   }
-  await cache.incr("planhat:skipped");
+
+  if (userActivities.length > 0) {
+    try {
+      const res = await fetch(
+        `https://analytics.planhat.com/analytics/bulk/${config.planhatTenantToken}`,
+        {
+          method: "POST",
+          body: JSON.stringify(userActivities.map(toPlanhat)),
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        console.error(`Error: ${res.status} ${res.statusText} ${text}`);
+      }
+    } catch (e) {
+      console.error("Error sending event to Planhat:", e);
+    }
+  }
 }
 
 // TODO: Mapping of event -> action
