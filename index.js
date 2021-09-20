@@ -73,17 +73,17 @@ export async function onEvent(event, { cache, config, global }) {
   const user_id = event.properties?.$user_id ?? event.distinct_id;
   if (user_id) {
     const isEventWhitelisted =
-      global.eventWhitelist === undefined ||
+      !Array.isArray(global.eventWhitelist) ||
       global.eventWhitelist.includes(event.event);
     const isEventBlacklisted =
-      global.eventBlacklist !== undefined &&
+      Array.isArray(global.eventBlacklist) &&
       global.eventBlacklist.includes(event.event);
-    const isUserBlacklisted =
-      global.userBlacklist !== undefined &&
-      global.userBlacklist.includes(user_id);
     const isUserWhitelisted =
-      global.userWhitelist === undefined ||
+      !Array.isArray(global.userWhitelist) ||
       global.userWhitelist.includes(user_id);
+    const isUserBlacklisted =
+      Array.isArray(global.userBlacklist) &&
+      global.userBlacklist.includes(user_id);
 
     if (config.enableDebugLogs === "yes") {
       console.debug(
@@ -132,7 +132,7 @@ export async function onEvent(event, { cache, config, global }) {
 export function toPlanhat(event) {
   const action = event.event.toLowerCase().replace(/[^a-z]/g, "");
   const current_url =
-    event.properties?.$pathname.includes("auth") ? {}
+    event.properties?.$pathname?.includes("auth") ? {}
       : { current_url: event.properties?.$current_url };
   return {
     action,
