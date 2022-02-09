@@ -7,32 +7,24 @@
 //  █████        █████░░████████ ████ █████ ████ █████░░████████  ░░█████
 // ░░░░░        ░░░░░  ░░░░░░░░ ░░░░ ░░░░░ ░░░░ ░░░░░  ░░░░░░░░    ░░░░░
 
+export async function setupPlugin({ config, attachments, global, metrics }) {
+  metrics.pluginLoads.increment(1);
 
-export async function setupPlugin({ config, attachments, global }) {
-  if (config.eventWhitelist) {
-    global.eventWhitelist = config.eventWhitelist.split(",");
-    console.info(`${global.eventWhitelist.length} events whitelisted`);
-  }
+  global.eventWhitelist = new Set(config.eventWhitelist ? config.eventWhitelist.split(",") : []);
+  console.info(`${global.eventWhitelist.size} events whitelisted`);
 
-  if (config.eventBlacklist) {
-    global.eventBlacklist = config.eventBlacklist.split(",");
-    console.info(`${global.eventBlacklist.length} events blacklisted`);
-  }
+  global.eventBlacklist = new Set(config.eventBlacklist ? config.eventBlacklist.split(",") : []);
+  console.info(`${global.eventBlacklist.size} events blacklisted`);
 
   if (attachments.userWhitelist) {
-    try {
-      const whitelist = Buffer.from(attachments.userWhitelist.contents)
-        .toString()
-        .split("\n");
-      if (whitelist.length > 0) {
-        if (whitelist[0] === "externalId") {
-          whitelist.shift();
-        }
-        global.userWhitelist = whitelist;
-        console.info(`${whitelist.length} users whitelisted.`);
+    const attachedWhitelist = Buffer.from(attachments.userWhitelist.contents)
+      .toString()
+      .split("\n");
+    if (attachedWhitelist.length > 0) {
+      if (attachedWhitelist[0] === "externalId") {
+        attachedWhitelist.shift();
       }
-    } catch (e) {
-      console.error("Creation of User Whitelist Failed:", e);
+      global.userWhitelist = new Set(attachedWhitelist);
     }
   }
 
@@ -45,38 +37,58 @@ export async function setupPlugin({ config, attachments, global }) {
         if (blacklist[0] === "externalId") {
           blacklist.shift();
         }
-        global.userBlacklist = blacklist;
+        global.userBlacklist = new Set(blacklist);
         console.info(`${blacklist.length} users blacklisted.`);
       }
     } catch (e) {
       console.error("Creation of User Blacklist Failed:", e);
     }
+  } else {
+    global.userBlacklist = new Set();
   }
 
   // TODO: Support whitelisting by Cohort
 }
 
-export async function exportEvents(events, { config, global }) {
+export const jobs = {
+  flushBatch: async () => {
+
+  }
+};
+
+export async function teardownPlugin({ global }) {
+  if (global.buffer?.flush) {
+    await global.buffer.flush();
+  }
+}
+
+export async function exportEvents(events, { cache, config, global, metrics }) {
   if (config.enableDebugLogs === "yes") {
     console.debug(`Stats | events=${events.length}`);
   }
+
+  metrics.totalEvents.increment(events.length);
 
   const userActivities = [];
   for (const event of events) {
     const user_id = event.properties?.$user_id ?? event.distinct_id;
     if (user_id) {
       const isEventWhitelisted =
-        !Array.isArray(global.eventWhitelist) ||
-        global.eventWhitelist.includes(event.event);
+        !global.eventWhitelist
+        || global.eventWhitelist.size === 0
+        || global.eventWhitelist.has(event.event);
       const isEventBlacklisted =
-        Array.isArray(global.eventBlacklist) &&
-        global.eventBlacklist.includes(event.event);
+        global.eventBlacklist
+        && global.eventBlacklist.size > 0
+        && global.eventBlacklist.has(event.event);
       const isUserWhitelisted =
-        !Array.isArray(global.userWhitelist) ||
-        global.userWhitelist.includes(user_id);
+        !global.userWhitelist
+        || global.userWhitelist.size === 0
+        || global.userWhitelist.has(user_id);
       const isUserBlacklisted =
-        Array.isArray(global.userBlacklist) &&
-        global.userBlacklist.includes(user_id);
+        global.userBlacklist
+        && global.userBlacklist.size > 0
+        && global.userBlacklist.has(user_id);
 
       if (config.enableDebugLogs === "yes") {
         console.debug(
@@ -117,13 +129,16 @@ export async function exportEvents(events, { config, global }) {
         const text = await res.text();
         console.error(`Error: ${res.status} ${res.statusText} ${text}`);
       }
+      metrics.maxBatchSize.max(userActivities.length);
+      metrics.minBatchSize.min(userActivities.length);
+      metrics.planhatEvents.increment(userActivities.length);
     } catch (e) {
       console.error("Error sending event to Planhat:", e);
     }
   }
 }
 
-// TODO: Mapping of event -> action
+// TODO: Customizable Mapping of event -> action
 export function toPlanhat(event) {
   const action = event.event.toLowerCase().replace(/[^a-z]/g, "");
   const current_url =
@@ -157,3 +172,16 @@ export function toPlanhat(event) {
     },
   };
 }
+
+export const metrics = {
+  pluginLoads: "sum",
+  planhatEvents: "sum",
+  totalEvents: "sum",
+  maxBatchSize: "max",
+  minBatchSize: "min",
+  events_seen: "sum",
+  events_delivered_successfully: "sum",
+  retry_errors: "sum",
+  other_errors: "sum",
+  undelivered_events: "sum"
+};
